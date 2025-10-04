@@ -1,0 +1,10 @@
+<?php
+// app/config/db_config.php
+
+return [
+    'servername' => 'localhost',
+    'username'   => 'root',
+    'password'   => '',
+    'dbname'     => 'db_pranay_office_deetex'
+];
+?>

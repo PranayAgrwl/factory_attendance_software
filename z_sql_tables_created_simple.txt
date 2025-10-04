@@ -1,0 +1,60 @@
+-- Create the database if it doesn't already exist
+CREATE DATABASE IF NOT EXISTS db_pranay_office_deetex;
+
+-- Use the newly created database
+USE db_pranay_office_deetex;
+
+-- Delete the table if it already exists
+DROP TABLE IF EXISTS employees_list;
+
+-- Create the employees_list table
+CREATE TABLE employees_list (
+    employee_id INT AUTO_INCREMENT PRIMARY KEY,
+    employee_name VARCHAR(255) NOT NULL,
+    bank_ac_number VARCHAR(50) NOT NULL,
+    bank_ifsc_code VARCHAR(20) NOT NULL,
+    active BOOLEAN NOT NULL DEFAULT 1,
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Delete the table if it already exists
+DROP TABLE IF EXISTS daily_attendance_report;
+
+-- Create the daily_attendance_report table
+CREATE TABLE daily_attendance_report (
+    entry_id INT AUTO_INCREMENT PRIMARY KEY,
+    entry_date DATE NOT NULL,
+    employee_id INT NOT NULL,
+    daily_attendance DECIMAL(10, 2) DEFAULT 0.00,
+    extra_work DECIMAL(10, 2) DEFAULT 0.00,
+    advance_taken DECIMAL(10, 2) DEFAULT 0.00,
+    create_date DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+
+-- Delete the table if it already exists
+DROP TABLE IF EXISTS users;
+
+-- Table to store user credentials
+CREATE TABLE users (
+    user_id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    static_captcha VARCHAR(50) NOT NULL, 
+    static_otp VARCHAR(50) NOT NULL,
+    notes VARCHAR(255) NULL
+);
+
+
+-- Delete the table if it already exists
+DROP TABLE IF EXISTS user_history;
+
+CREATE TABLE user_history (
+    history_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    login_time DATETIME NOT NULL,
+    ip_address VARCHAR(45) NOT NULL,
+    -- Storing location info, allowing NULL since it's "not strict"
+    latitude DECIMAL(10, 8) NULL,
+    longitude DECIMAL(11, 8) NULL
+);
