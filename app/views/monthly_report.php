@@ -29,7 +29,7 @@
                     <th rowspan="2" style="min-width: 150px;">Employee Name</th>
                     <th rowspan="2" style="min-width: 120px;">Metric</th>
                     <th colspan="<?php echo $days_in_month; ?>" class="text-center">Daily Data (by Date)</th>
-                    <th colspan="3" class="text-center">Monthly Summary</th>
+                    <th colspan="3" class="text-center">Monthly Summary</th> 
                 </tr>
                 <tr>
                     <?php 
@@ -38,9 +38,10 @@
                             echo "<th>" . $d . "</th>";
                         }
                     ?>
-                    <th>Total Shifts</th>
-                    <th>Extra Shifts (Rs)</th>
-                    <th>Total Advance (Rs)</th>
+                    <th>Total Earnings (Shifts x Salary)</th>
+                    <th>Extra Work (₹)</th>
+                    <th>Advance Taken (₹)</th>
+                    <th>NET DUE (₹)</th>
                 </tr>
             </thead>
             <tbody>
@@ -55,26 +56,41 @@
                             continue;
                         }
 
-                        // Get monthly totals (for the final three summary columns)
+                        // --- Data Aggregation ---
                         $total_shifts = $report['total_shifts'] ?? 0;
                         $total_extra = $report['total_extra'] ?? 0.00;
                         $total_advance = $report['total_advance'] ?? 0.00;
+                        $total_earnings = 0.00; // Recalculate based on snapshot
+                        
+                        // Calculate total earnings using the salary snapshot from each daily record
+                        if ($report && isset($report['dates'])) {
+                            foreach ($report['dates'] as $daily_record) {
+                                // IMPORTANT: Use the recorded salary_snapshot for the calculation
+                                $daily_salary = (float)($daily_record->salary_snapshot ?? 0.00);
+                                $total_earnings += ((float)$daily_record->daily_attendance * $daily_salary);
+                            }
+                        }
+                        
+                        // CALCULATION: Net Due
+                        $net_due = $total_earnings + $total_extra - $total_advance;
+                        // ------------------------
+
 
                         // Define the metrics we want to display in the three rows
+                        // CHANGED: The 'shifts' metric label is now 'Earning'
                         $metrics = [
-                            'shifts' => ['label' => 'Attendance', 'total' => $total_shifts, 'column' => 'daily_attendance', 'format' => ''],
-                            'extra' => ['label' => 'Extra Work', 'total' => $total_extra, 'column' => 'extra_work', 'format' => 'number_format'],
-                            'advance' => ['label' => 'Advance Taken', 'total' => $total_advance, 'column' => 'advance_taken', 'format' => 'number_format']
+                            'shifts' => ['label' => 'Daily Earning', 'total' => $total_earnings, 'column' => 'daily_attendance', 'is_earning' => true],
+                            'extra' => ['label' => 'Extra Work', 'total' => $total_extra, 'column' => 'extra_work', 'is_earning' => false],
+                            'advance' => ['label' => 'Advance Taken', 'total' => $total_advance, 'column' => 'advance_taken', 'is_earning' => false]
                         ];
                         
-                        // Start an iteration counter for row styling/grouping
                         $metric_counter = 0;
                         
                         // Loop to print the three required rows for this one employee
                         foreach($metrics as $metric_key => $metric_data)
                         {
                             $metric_counter++;
-                            $row_class = ($metric_counter === 1) ? 'employee-group-start' : ''; // Optional class for visual grouping
+                            $row_class = ($metric_counter === 1) ? 'employee-group-start' : ''; 
                             
                             echo "<tr class='{$row_class}'>";
                             
@@ -89,36 +105,48 @@
                             // 3. Daily Data (Loop through all days of the month)
                             for ($d = 1; $d <= $days_in_month; $d++) {
                                 $date_key = $selected_year_month . '-' . str_pad($d, 2, '0', STR_PAD_LEFT);
-                                $daily_value = 0;
+                                $display_value = '-';
                                 
                                 if (isset($report['dates'][$date_key])) {
-                                    // Get the specific value (daily_attendance, extra_work, or advance_taken)
+                                    $record = $report['dates'][$date_key];
                                     $col_name = $metric_data['column'];
-                                    $daily_value = $report['dates'][$date_key]->$col_name;
+                                    $daily_value = (float)($record->$col_name ?? 0.00);
+
+                                    if ($metric_data['is_earning']) {
+                                        // NEW LOGIC: Calculate Daily Earning (Attendance x Snapshot Salary)
+                                        $daily_salary = (float)($record->salary_snapshot ?? 0.00);
+                                        $daily_earning = $daily_value * $daily_salary;
+                                        $display_value = ($daily_earning > 0) ? number_format($daily_earning, 2) : '-';
+                                    } else {
+                                        // Existing logic for Extra Work and Advance Taken
+                                        $display_value = ($daily_value > 0) ? number_format($daily_value, 2) : '-';
+                                    }
                                 }
-                                
-                                // Display the value, using '-' for zero values to keep it clean
-                                $display_value = ($daily_value > 0) ? $daily_value : '-';
                                 
                                 echo "<td class='text-center'>" . $display_value . "</td>";
                             }
 
-                            // 4. Monthly Summary (Prints the totals, only once per metric type)
-                            if ($metric_key === 'shifts') {
-                                echo "<td rowspan='3' class='text-center fw-bold'>" . $total_shifts . "</td>";
-                            // }
-                            // if ($metric_key === 'extra') {
+                            // 4. Monthly Summary (Prints the totals, spans 3 rows)
+                            if ($metric_counter === 1) {
+                                
+                                // Total Earnings (Shifts x Salary)
+                                echo "<td rowspan='3' class='text-end fw-bold bg-light'>" . number_format($total_earnings, 2) . "</td>";
+                                
+                                // Total Extra Work
                                 echo "<td rowspan='3' class='text-end fw-bold'>" . number_format($total_extra, 2) . "</td>";
-                            // }
-                            // if ($metric_key === 'advance') {
+                                
+                                // Total Advance
                                 echo "<td rowspan='3' class='text-end fw-bold'>" . number_format($total_advance, 2) . "</td>";
+                                
+                                // NET DUE - NEW COLUMN (Final Result)
+                                echo "<td rowspan='3' class='text-end fw-bold bg-light'>" . number_format($net_due, 2) . "</td>";
                             }
 
                             echo "</tr>";
                         }
                     } 
                 } else {
-                    // +5 columns: Employee Name, Metric, Total Shifts, Total Extra, Total Advance
+                    // colspan is days_in_month + 5 (Employee Name, Metric, Earnings, Extra, Advance, Due)
                     echo '<tr><td colspan="' . ($days_in_month + 5) . '">No employee data found for the selected criteria.</td></tr>';
                 }
                 ?>

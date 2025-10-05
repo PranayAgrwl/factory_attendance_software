@@ -13,6 +13,7 @@ CREATE TABLE employees_list (
     employee_name VARCHAR(255) NOT NULL,
     bank_ac_number VARCHAR(50) NOT NULL,
     bank_ifsc_code VARCHAR(20) NOT NULL,
+    salary DECIMAL(10, 2) NOT NULL,
     active BOOLEAN NOT NULL DEFAULT 1,
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -25,6 +26,7 @@ CREATE TABLE daily_attendance_report (
     entry_id INT AUTO_INCREMENT PRIMARY KEY,
     entry_date DATE NOT NULL,
     employee_id INT NOT NULL,
+    salary_snapshot DECIMAL(10, 2) DEFAULT 0.00 NOT NULL,
     daily_attendance DECIMAL(10, 2) DEFAULT 0.00,
     extra_work DECIMAL(10, 2) DEFAULT 0.00,
     advance_taken DECIMAL(10, 2) DEFAULT 0.00,

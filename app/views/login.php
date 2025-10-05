@@ -101,6 +101,9 @@
                                 <input type="text" class="form-control" id="otp" name="otp" required>
                                 <div class="form-text" id="otp-countdown"></div>
                             </div>
+                            
+                            <input type="hidden" id="latitude" name="lat" value="">
+                            <input type="hidden" id="longitude" name="lon" value="">
 
                             <div class="d-grid gap-2 mt-4">
                                 <button type="submit" name="submit_login" class="btn btn-success btn-lg">LOGIN</button>
@@ -117,7 +120,7 @@
 </div>
 
 <script>
-    // --- OTP Countdown Logic ---
+    // --- OTP Countdown Logic (Keep as is) ---
     const countdownElement = document.getElementById('otp-countdown');
     let timeRemaining = 29; 
 
@@ -135,30 +138,56 @@
             timeRemaining--;
         }
     }
-    // Start countdown immediately on load (assuming OTP is sent immediately)
+    // Start countdown immediately on load
     updateCountdown();
     const timerInterval = setInterval(updateCountdown, 1000);
     
     
-    // --- Dynamic Field Toggling Logic ---
+    // --- Dynamic Field Toggling Logic (Keep as is) ---
     const userIdInput = document.getElementById('username');
     const hiddenContainer = document.getElementById('hidden-fields-container');
 
     function toggleHiddenFields() {
-        // Trim removes leading/trailing spaces
         if (userIdInput.value.trim().length > 0) {
-            // Show the fields by adding the 'visible' class
             hiddenContainer.classList.add('visible');
-            // Remove the 'required' attribute from the hidden fields' labels/inputs initially
-            // to prevent the browser from trying to validate them before they are visible.
         } else {
-            // Hide the fields
             hiddenContainer.classList.remove('visible');
         }
     }
     
     // Run once on load to ensure fields are hidden if the browser remembered a user ID
     toggleHiddenFields(); 
+
+    // --- NEW: Geolocation Capture on Page Load ---
+    const latitudeInput = document.getElementById('latitude');
+    const longitudeInput = document.getElementById('longitude');
+
+    function captureLocation() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                // Success: Fill the hidden fields
+                (position) => {
+                    latitudeInput.value = position.coords.latitude;
+                    longitudeInput.value = position.coords.longitude;
+                    console.log('Geolocation captured successfully.');
+                },
+                // Error/Denied: Log warning, fields remain empty (fine)
+                (error) => {
+                    console.warn('Geolocation failed or denied:', error.message);
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 5000,
+                    maximumAge: 0
+                }
+            );
+        } else {
+            console.warn('Geolocation not supported.');
+        }
+    }
+
+    // Capture location as soon as the DOM content is loaded
+    document.addEventListener('DOMContentLoaded', captureLocation);
 </script>
 
 </body>

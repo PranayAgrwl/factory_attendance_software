@@ -16,11 +16,11 @@
 	include_once('footer.php');
 ?>
 
-<script>
+<!-- <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Only attempt location capture if a history ID exists
     // The history ID is automatically removed from the session after this runs successfully
-    const historyId = <?php echo json_encode($_SESSION['history_id'] ?? null); ?>;
+    const historyId = <+php echo json_encode($_SESSION['history_id'] ?? null); ?>;
 
     if (!historyId) {
         return; // Already captured or not set
@@ -65,8 +65,8 @@ document.addEventListener('DOMContentLoaded', function() {
         );
     }
 });
-</script>
-<?php
+</script> -->
+<!-- <+php
     // Clear the history ID immediately after it's passed to JS to prevent repeated attempts
     unset($_SESSION['history_id']);
-?>
+?> -->

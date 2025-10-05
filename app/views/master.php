@@ -18,11 +18,12 @@ include_once('navbar.php');
     <table class="table table-hover">
         <thead>
             <tr>
-                <th>SR. NO.</th>
-                <th>EMPLOYEE ID</th>
+                <!-- <th>SR. NO.</th> -->
+                <!-- <th>EMPLOYEE ID</th> -->
                 <th>EMPLOYEE NAME</th>
                 <th>BANK A/C NO.</th>
                 <th>BANK IFSC CODE</th>
+                <th>SALARY</th>
                 <th>ACTIVE</th>
                 <th>EDIT</th>
                 <th>DELETE</th>
@@ -35,11 +36,12 @@ include_once('navbar.php');
                 {
             ?>
                 <tr>
-                    <td><?php echo $i; ?></td>
-                    <td><?php echo $key -> employee_id; ?></td>
+                    <!-- <td><+php echo $i; ?></td> -->
+                    <!-- <td><+php echo $key -> employee_id; ?></td> -->
                     <td><?php echo $key -> employee_name; ?></td>
                     <td><?php echo $key -> bank_ac_number; ?></td>
                     <td><?php echo $key -> bank_ifsc_code; ?></td>
+                    <td><?php echo $key -> salary; ?></td>
                     <td><?php echo $key -> active; ?></td>
                     <td>
                         <button
@@ -51,6 +53,7 @@ include_once('navbar.php');
                             data-employee-name="<?php echo $key->employee_name; ?>"
                             data-bank_ac_number="<?php echo $key->bank_ac_number; ?>"
                             data-bank_ifsc_code="<?php echo $key->bank_ifsc_code; ?>"
+                            data-salary="<?php echo $key->salary; ?>"
                             data-active="<?php echo $key->active; ?>"
                         >
                             EDIT
@@ -111,6 +114,10 @@ include_once('navbar.php');
                         <input type="text" class="form-control" id="bank_ifsc_code" placeholder="Enter Bank IFSC Code" name="bank_ifsc_code" required>
                         <label>Bank IFSC Code</label>
                     </div>
+                    <div class="form-floating mt-3 mb-3">
+                        <input type="number" step="0.01" class="form-control" id="salary" placeholder="Enter Salary" name="salary" required>
+                        <label>Salary (₹)</label>
+                    </div>
                     <button type="submit" class="btn btn-primary" name="add_employee">Submit</button>
                 </form>
             </div>
@@ -152,6 +159,10 @@ include_once('navbar.php');
                         <input type="text" class="form-control" name="edit_bank_ifsc_code" id="edit_bank_ifsc_code" required>
                     </div>
                     <div class="mb-3">
+                        <label>Salary (₹):</label>
+                        <input type="number" step="0.01" class="form-control" name="edit_salary" id="edit_salary" required>
+                    </div>
+                    <div class="mb-3">
                         <label>Is Currently Working with us:</label>
                         <input type="checkbox" name="active" id="edit_active_checkbox" value="1">
                     </div>
@@ -177,12 +188,14 @@ include_once('navbar.php');
         var employee_name = button.getAttribute('data-employee-name');
         var bank_ac_number = button.getAttribute('data-bank_ac_number');
         var bank_ifsc_code = button.getAttribute('data-bank_ifsc_code');
+        var salary = button.getAttribute('data-salary');
         var active_status = button.getAttribute('data-active');
 
         document.getElementById('edit_employee_id').value = employee_id;
         document.getElementById('edit_employee_name').value = employee_name;
         document.getElementById('edit_bank_ac_number').value = bank_ac_number;
         document.getElementById('edit_bank_ifsc_code').value = bank_ifsc_code;
+        document.getElementById('edit_salary').value = salary; 
 
         var activeCheckbox = document.getElementById('edit_active_checkbox');
 
