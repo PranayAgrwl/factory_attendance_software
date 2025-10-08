@@ -1,8 +1,8 @@
 -- Create the database if it doesn't already exist
-CREATE DATABASE IF NOT EXISTS db_pranay_office_deetex;
+CREATE DATABASE IF NOT EXISTS db_pranay_office_kptex;
 
 -- Use the newly created database
-USE db_pranay_office_deetex;
+USE db_pranay_office_kptex;
 
 -- Delete the table if it already exists
 DROP TABLE IF EXISTS employees_list;

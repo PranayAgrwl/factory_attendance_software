@@ -1,0 +1,10 @@
+<?php
+// app/config/db_config.php
+
+return [
+    'servername' => 'sql309.infinityfree.com',
+    'username'   => 'if0_38135779',
+    'password'   => 'N3FpmATwIAe0mja',
+    'dbname'     => 'if0_38135779_db_pranay_office_kptex'
+];
+?>

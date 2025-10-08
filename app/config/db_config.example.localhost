@@ -5,6 +5,6 @@ return [
     'servername' => 'localhost',
     'username'   => 'root',
     'password'   => '',
-    'dbname'     => 'db_pranay_office_deetex'
+    'dbname'     => 'db_pranay_office_kptex'
 ];
 ?>

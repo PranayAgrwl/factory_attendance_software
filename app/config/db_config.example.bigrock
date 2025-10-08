@@ -5,6 +5,6 @@ return [
     'servername' => 'cp-in-18',
     'username'   => 'a1759e60_pranay',
     'password'   => '^TDH89yf74**',
-    'dbname'     => 'a1759e60_db_pranay_office_deetex'
+    'dbname'     => 'a1759e60_db_pranay_office_kptex'
 ];
 ?>
