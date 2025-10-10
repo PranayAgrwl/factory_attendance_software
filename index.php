@@ -54,6 +54,9 @@ date_default_timezone_set('Asia/Kolkata'); // comment
 		case 'export_salary_report' :
 			$Controller->export_salary_report();
 			break;
+		case 'export_salary_report_xlsx' :
+			$Controller->export_salary_report_xlsx();
+			break;
 		default :
 			http_response_code ( 404 );
 			$Controller->error404();

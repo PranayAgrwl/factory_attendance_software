@@ -107,15 +107,15 @@ include_once('navbar.php');
                         <label>Name</label>
                     </div>
                     <div class="form-floating mt-3 mb-3">
-                        <input type="text" class="form-control" id="bank_ac_number" placeholder="Enter Bank Account Number" name="bank_ac_number" required>
+                        <input type="text" class="form-control" id="bank_ac_number" placeholder="Enter Bank Account Number" name="bank_ac_number">
                         <label>Bank Account Number</label>
                     </div>
                     <div class="form-floating mt-3 mb-3">
-                        <input type="text" class="form-control" id="bank_ifsc_code" placeholder="Enter Bank IFSC Code" name="bank_ifsc_code" required>
+                        <input type="text" class="form-control" id="bank_ifsc_code" placeholder="Enter Bank IFSC Code" name="bank_ifsc_code">
                         <label>Bank IFSC Code</label>
                     </div>
                     <div class="form-floating mt-3 mb-3">
-                        <input type="number" step="0.01" class="form-control" id="salary" placeholder="Enter Salary" name="salary" required>
+                        <input type="number" step="0.01" class="form-control" id="salary" placeholder="Enter Salary" name="salary">
                         <label>Salary (₹)</label>
                     </div>
                     <button type="submit" class="btn btn-primary" name="add_employee">Submit</button>
@@ -152,15 +152,15 @@ include_once('navbar.php');
                     </div>
                     <div class="mb-3">
                         <label>Bank Account Number:</label>
-                        <input type="text" class="form-control" name="edit_bank_ac_number" id="edit_bank_ac_number" required>
+                        <input type="text" class="form-control" name="edit_bank_ac_number" id="edit_bank_ac_number">
                     </div>
                     <div class="mb-3">
                         <label>Bank IFSC Code:</label>
-                        <input type="text" class="form-control" name="edit_bank_ifsc_code" id="edit_bank_ifsc_code" required>
+                        <input type="text" class="form-control" name="edit_bank_ifsc_code" id="edit_bank_ifsc_code">
                     </div>
                     <div class="mb-3">
                         <label>Salary (₹):</label>
-                        <input type="number" step="0.01" class="form-control" name="edit_salary" id="edit_salary" required>
+                        <input type="number" step="0.01" class="form-control" name="edit_salary" id="edit_salary">
                     </div>
                     <div class="mb-3">
                         <label>Is Currently Working with us:</label>

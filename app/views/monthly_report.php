@@ -10,6 +10,7 @@
 
     <form action="monthly_report" method="GET">
         <div class="row align-items-end mb-4">
+            
             <div class="col-auto">
                 <label for="inputMonth" class="form-label">Select Month:</label>
                 <input type="month" class="form-control" id="inputMonth" name="month" value="<?php echo htmlspecialchars($selected_year_month); ?>" required>
@@ -17,6 +18,21 @@
             <div class="col-auto">
                 <button type="submit" class="btn btn-primary">Generate Report</button>
             </div>
+
+            <!-- NEW: Previous Month Button -->
+            <div class="col-auto">
+                <a href="monthly_report?month=<?php echo htmlspecialchars($prev_month); ?>" class="btn btn-outline-secondary">
+                    &lt; Prev Month
+                </a>
+            </div>
+ 
+            <!-- NEW: Next Month Button -->
+            <div class="col-auto">
+                <a href="monthly_report?month=<?php echo htmlspecialchars($next_month); ?>" class="btn btn-outline-secondary">
+                    Next Month &gt;
+                </a>
+            </div>
+            
         </div>
     </form>
     
@@ -29,7 +45,7 @@
                     <th rowspan="2" style="min-width: 150px;">Employee Name</th>
                     <th rowspan="2" style="min-width: 120px;">Metric</th>
                     <th colspan="<?php echo $days_in_month; ?>" class="text-center">Daily Data (by Date)</th>
-                    <th colspan="3" class="text-center">Monthly Summary</th> 
+                    <th colspan="4" class="text-center">Monthly Summary</th> 
                 </tr>
                 <tr>
                     <?php 
@@ -38,7 +54,7 @@
                             echo "<th>" . $d . "</th>";
                         }
                     ?>
-                    <th>Total Earnings (Shifts x Salary)</th>
+                    <th>Total Earnings (₹)</th>
                     <th>Extra Work (₹)</th>
                     <th>Advance Taken (₹)</th>
                     <th>NET DUE (₹)</th>
@@ -105,21 +121,31 @@
                             // 3. Daily Data (Loop through all days of the month)
                             for ($d = 1; $d <= $days_in_month; $d++) {
                                 $date_key = $selected_year_month . '-' . str_pad($d, 2, '0', STR_PAD_LEFT);
-                                $display_value = '-';
                                 
+                                // Default to dash if no data is found for the day
+                                $display_value = '-'; 
+
                                 if (isset($report['dates'][$date_key])) {
                                     $record = $report['dates'][$date_key];
                                     $col_name = $metric_data['column'];
-                                    $daily_value = (float)($record->$col_name ?? 0.00);
-
+                                    $daily_value = 0.00;
+                                    
                                     if ($metric_data['is_earning']) {
                                         // NEW LOGIC: Calculate Daily Earning (Attendance x Snapshot Salary)
+                                        $daily_attendance = (float)($record->$col_name ?? 0.00);
                                         $daily_salary = (float)($record->salary_snapshot ?? 0.00);
-                                        $daily_earning = $daily_value * $daily_salary;
-                                        $display_value = ($daily_earning > 0) ? number_format($daily_earning, 2) : '-';
+                                        $daily_value = $daily_attendance * $daily_salary;
                                     } else {
                                         // Existing logic for Extra Work and Advance Taken
-                                        $display_value = ($daily_value > 0) ? number_format($daily_value, 2) : '-';
+                                        $daily_value = (float)($record->$col_name ?? 0.00);
+                                    }
+                                    
+                                    // --- EDITED: Check if value is > 0 or exactly 0 ---
+                                    if ($daily_value > 0) {
+                                        $display_value = number_format($daily_value, 2);
+                                    } else {
+                                        // If record exists but value is 0, display '0.00'
+                                        $display_value = '0.00'; 
                                     }
                                 }
                                 
@@ -130,10 +156,10 @@
                             if ($metric_counter === 1) {
                                 
                                 // Total Earnings (Shifts x Salary)
-                                echo "<td rowspan='3' class='text-end fw-bold bg-light'>" . number_format($total_earnings, 2) . "</td>";
+                                echo "<td rowspan='3' class='text-end fw-bold'>" . number_format($total_earnings, 2) . "</td>";
                                 
                                 // Total Extra Work
-                                echo "<td rowspan='3' class='text-end fw-bold'>" . number_format($total_extra, 2) . "</td>";
+                                echo "<td rowspan='3' class='text-end fw-bold bg-light'>" . number_format($total_extra, 2) . "</td>";
                                 
                                 // Total Advance
                                 echo "<td rowspan='3' class='text-end fw-bold'>" . number_format($total_advance, 2) . "</td>";
@@ -146,8 +172,8 @@
                         }
                     } 
                 } else {
-                    // colspan is days_in_month + 5 (Employee Name, Metric, Earnings, Extra, Advance, Due)
-                    echo '<tr><td colspan="' . ($days_in_month + 5) . '">No employee data found for the selected criteria.</td></tr>';
+                    // colspan is days_in_month + 6 (Employee Name, Metric, Days, Earnings, Extra, Advance, Due)
+                    echo '<tr><td colspan="' . ($days_in_month + 6) . '">No employee data found for the selected criteria.</td></tr>';
                 }
                 ?>
             </tbody>

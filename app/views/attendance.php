@@ -1,6 +1,6 @@
 <?php 
-	include_once('header.php');
-	include_once('navbar.php');
+    include_once('header.php');
+    include_once('navbar.php');
 ?>
 
 
@@ -16,13 +16,29 @@
     </div>
 
     <form action="attendance" method="GET">
-        <div class="row align-items-end">
-            <div class="col-auto mb-3">
+        <div class="row align-items-end mb-4">
+            
+            <div class="col-auto">
                 <label for="inputDate" class="form-label">Select Date:</label>
                 <input type="date" class="form-control" id="inputDate" name="date" value="<?php echo htmlspecialchars($selected_date); ?>" required>
             </div>
-            <div class="col-auto mb-3">
+            <div class="col-auto">
                 <button type="submit" class="btn btn-primary">Go</button>
+            </div>
+
+
+            <!-- NEW: Previous Date Button -->
+            <div class="col-auto">
+                <a href="attendance?date=<?php echo htmlspecialchars($prev_date); ?>" class="btn btn-outline-secondary">
+                    &lt; Prev Date
+                </a>
+            </div>
+            
+            <!-- NEW: Next Date Button -->
+            <div class="col-auto">
+                <a href="attendance?date=<?php echo htmlspecialchars($next_date); ?>" class="btn btn-outline-secondary">
+                    Next Date &gt;
+                </a>
             </div>
         </div>
     </form>
@@ -73,13 +89,13 @@
                             <!-- <input type="hidden" name="employee_id" value="<+php echo ($row->employee_id); ?>"> -->
                         </td>
                         <td>
-                            <input type='number' class='form-control' name='entries[<?php echo $row->employee_id; ?>][attendance]' value="<?php echo $daily_attendance; ?>" required step="0.01">
+                            <input type='number' class='form-control' name='entries[<?php echo $row->employee_id; ?>][attendance]' value="<?php echo $daily_attendance; ?>" step="0.01">
                         </td>
                         <td>
-                            <input type='number' class='form-control' name='entries[<?php echo $row->employee_id; ?>][extra_work]' value="<?php echo $extra_work; ?>"required step="0.01">
+                            <input type='number' class='form-control' name='entries[<?php echo $row->employee_id; ?>][extra_work]' value="<?php echo $extra_work; ?>" step="0.01">
                         </td>
                         <td>
-                            <input type='number' class='form-control'name='entries[<?php echo $row->employee_id; ?>][advance_taken]' value="<?php echo $advance_taken; ?>" required>
+                            <input type='number' class='form-control'name='entries[<?php echo $row->employee_id; ?>][advance_taken]' value="<?php echo $advance_taken; ?>">
                         </td>
                     </tr>
 
@@ -102,5 +118,5 @@
 
 
 <?php
-	include_once('footer.php');
+    include_once('footer.php');
 ?>

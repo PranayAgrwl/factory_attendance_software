@@ -2,134 +2,167 @@
 
 class Model
 {
-	public $connection;
+    public $connection;
 
-	public function __construct()
-	{
-		$config = require(__DIR__ . '/../config/db_config.php');
+    public function __construct()
+    {
+        $config = require(__DIR__ . '/../config/db_config.php');
 
-		$this->connection = new mysqli(
-			$config['servername'],
-			$config['username'],
-			$config['password'],
-			$config['dbname']
-		);
+        $this->connection = new mysqli(
+            $config['servername'],
+            $config['username'],
+            $config['password'],
+            $config['dbname']
+        );
 
-		if ($this->connection->connect_error) {
-			die("Database Connection Error: " . $this->connection->connect_error);
-		}
-	}
+        if ($this->connection->connect_error) {
+            die("Database Connection Error: " . $this->connection->connect_error);
+        }
+    }
 
-	public function insertData ($table, $insertArray)
-	{
-		$key = implode (",", array_keys($insertArray));
-		$value = implode ("','", array_values($insertArray));
-		$query = "INSERT INTO $table ($key) VALUES ('$value') ";
-		$res = $this -> connection -> query ($query);
-		return $res;
-	}
+    // =================================================================
+    // ✅ FIX 1: insertData - Use real_escape_string on ALL values
+    // =================================================================
+    public function insertData ($table, $insertArray)
+    {
+        // 1. Escape all values
+        $escapedValues = array_map(function($value) {
+            // Check if the value is not null and is a string before escaping
+            if (is_string($value)) {
+                return $this->connection->real_escape_string($value);
+            }
+            // For numbers or non-strings, return as is (they won't break quotes)
+            return $value; 
+        }, array_values($insertArray));
+        
+        $key = implode (",", array_keys($insertArray));
+        
+        // 2. Build the value string with escaped data
+        $valueString = "'" . implode ("','", $escapedValues) . "'";
 
-	public function selectData ($table)
-	{
-		$query = "SELECT * FROM $table";
-		$res = $this -> connection -> query ($query);
-		while ($row = $res -> fetch_object())
-		{
-			$rw[] = $row;
-		}
-		return $rw ?? [];
-	}
+        $query = "INSERT INTO $table ($key) VALUES ($valueString) ";
+        
+        $res = $this->connection->query($query);
+        return $res;
+    }
+    // =================================================================
 
-	public function selectOne ($table, $where)
-	{
-		$query = "SELECT * FROM $table WHERE 1=1";
-		foreach($where as $key => $value)
-		{
-			$query.=" AND ".$key."='".$value."'";
-		}
-		$res = $this -> connection -> query ($query);
-		$rw = $res -> fetch_object();
-		return $rw ?? [];
-	}
-	
-	public function updateData ($table, $setArray, $where)
-	{
-		$query = "UPDATE $table SET";
-		$count = count ($setArray);
-		$i=0;
-		foreach($setArray as $key => $value)
-		{
-			if($i < $count -1)
-			{
-				$query.= " " .$key. " = '".$value."', ";
-			}
-			else
-			{
-				$query.= " " .$key. " = '" .$value."' ";
-			}
-			$i++;
-		}
-		$query.= " WHERE 1=1 ";
-		foreach($where as $key => $value)
-		{
-			$query.= " AND " .$key. " = '" .$value. "' ";
-		}
-		// echo "<pre>$query</pre>";
-		$res = $this -> connection -> query ($query);
-		return $res;
-	}
 
-	public function deleteData ($table, $where)
-	{
-		$query = "DELETE FROM $table WHERE 1=1";
-		foreach($where as $key => $value)
-		{
-			$query.= " AND $key = '$value'";
-		}
-		$res = $this -> connection -> query ($query);
-		return $res;
-	}
+    public function selectData ($table)
+    {
+        $query = "SELECT * FROM $table";
+        $res = $this -> connection -> query ($query);
+        while ($row = $res -> fetch_object())
+        {
+            $rw[] = $row;
+        }
+        return $rw ?? [];
+    }
+    
+    // =================================================================
+    // ✅ FIX 2: selectOne - Use real_escape_string on all WHERE values
+    // =================================================================
+    public function selectOne ($table, $where)
+    {
+        $query = "SELECT * FROM $table WHERE 1=1";
+        foreach($where as $key => $value)
+        {
+            // Escape the value before using it in the WHERE clause
+            $escapedValue = $this->connection->real_escape_string($value);
+            $query.=" AND ".$key."='".$escapedValue."'";
+        }
+        $res = $this -> connection -> query ($query);
+        $rw = $res -> fetch_object();
+        return $rw ?? [];
+    }
+    // =================================================================
 
-	public function selectDataWithCondition ($table, $where)
+    // =================================================================
+    // ✅ FIX 3: updateData - Use real_escape_string on SET and WHERE values
+    // =================================================================
+    public function updateData ($table, $setArray, $where)
+    {
+        $query = "UPDATE $table SET";
+        $setClauses = [];
+        
+        // Build SET clauses with escaped values
+        foreach($setArray as $key => $value)
+        {
+            // Escape the value
+            $escapedValue = $this->connection->real_escape_string($value);
+            $setClauses[] = " " .$key. " = '" .$escapedValue. "'";
+        }
+        
+        $query .= implode(', ', $setClauses);
+        
+        $query.= " WHERE 1=1 ";
+        
+        // Build WHERE clauses with escaped values
+        foreach($where as $key => $value)
+        {
+            // Escape the value
+            $escapedValue = $this->connection->real_escape_string($value);
+            $query.= " AND " .$key. " = '" .$escapedValue. "' ";
+        }
+        
+        $res = $this -> connection -> query ($query);
+        return $res;
+    }
+    // =================================================================
+
+    // =================================================================
+    // ✅ FIX 4: deleteData - Use real_escape_string on WHERE values
+    // =================================================================
+    public function deleteData ($table, $where)
+    {
+        $query = "DELETE FROM $table WHERE 1=1";
+        foreach($where as $key => $value)
+        {
+            // Escape the value
+            $escapedValue = $this->connection->real_escape_string($value);
+            $query.= " AND $key = '$escapedValue'";
+        }
+        $res = $this -> connection -> query ($query);
+        return $res;
+    }
+    // =================================================================
+
+    // =================================================================
+    // ✅ FIX 5: selectDataWithCondition - Use real_escape_string for = comparison
+    // =================================================================
+    public function selectDataWithCondition ($table, $where)
     {
         $query = "SELECT * FROM $table WHERE 1=1";
 
-        // Append each condition from the $where array to the query
         foreach($where as $key => $value)
         {
-            // Check if the condition key contains 'LIKE'
+            // Check for conditions that use operators like 'LIKE'
             if (strpos(strtoupper(trim($key)), 'LIKE') !== false) {
-                // For LIKE, the value should already contain quotes and wildcards
-                // e.g., ['entry_date LIKE' => "'2025-10%'"]
-                // We assume the caller (Controller) passes the value WITH quotes if needed.
-                // NOTE: The Controller passes it as "{$selected_year_month}%" which is correct.
-                $query .= " AND {$key} '{$value}'";
+                // For LIKE, we still need to escape the user-supplied value.
+                // NOTE: The value passed by the controller for LIKE already contains the % or is a date.
+                $escapedValue = $this->connection->real_escape_string($value);
+                // We assume the caller handles the surrounding quotes for LIKE correctly.
+                $query .= " AND {$key} '{$escapedValue}'"; 
             } else {
-                // For standard equality (=), quote the value
-                $query .= " AND {$key} = '{$value}'";
+                // For standard equality (=), escape the value and quote it
+                $escapedValue = $this->connection->real_escape_string($value);
+                $query .= " AND {$key} = '{$escapedValue}'";
             }
         }
         
-        // Final query will look like:
-        // SELECT * FROM daily_attendance_report WHERE 1=1 AND entry_date LIKE '2025-10%'
-        
         $res = $this->connection->query($query);
         
-        // Check if the query was successful and returned results
         if (!$res) {
-            // Handle error (e.g., log it or return an error message)
             echo "SQL Error in selectDataWithCondition: " . $this->connection->error;
             return []; 
         }
 
         $results = [];
-        // Fetch all resulting rows as objects
         while ($row = $res->fetch_object())
         {
             $results[] = $row;
         }
         
-        // Return the array of objects, or an empty array if no rows were found
         return $results;
     }
 }

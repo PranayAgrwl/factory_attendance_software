@@ -2,6 +2,14 @@
 
 require_once ("app/models/Model.php");
 
+// 1. Load the vendor folder
+require __DIR__ . '/../../vendor/autoload.php';
+
+// 2. Import the main classes we need from PHPSpreadsheet
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+
+
 class Controller
 {
 	private $model;
@@ -103,33 +111,6 @@ class Controller
 		}
 	}
 
-	// public function update_location()
-	// {
-	// 	// Ensure this is an AJAX request and the user is logged in
-	// 	if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true || !isset($_POST['lat']) || !isset($_POST['lon'])) {
-	// 		http_response_code(403); // Forbidden
-	// 		exit;
-	// 	}
-
-	// 	$history_id = $_SESSION['history_id'] ?? null;
-	// 	$latitude = (float)$_POST['lat'];
-	// 	$longitude = (float)$_POST['lon'];
-
-	// 	if ($history_id) {
-	// 		$update_data = [
-	// 			'latitude' => $latitude,
-	// 			'longitude' => $longitude
-	// 		];
-			
-	// 		// Use a simple Model method to update the record
-	// 		$this->model->updateData('user_history', $update_data, ['history_id' => $history_id]);
-	// 	}
-		
-	// 	// Send a simple response back to the browser
-	// 	echo json_encode(['status' => 'success']);
-	// 	exit;
-	// }
-
 	// Example usage in another controller method:
 	public function home() {
 		$this->enforceLogin(); // Run the middleware check
@@ -149,68 +130,83 @@ class Controller
 		include ('app/views/error404.php');
 	}
 	public function master()
-	{
-		$this->enforceLogin(); // Run the middleware check
-		$viewdata = $this -> model -> selectData ("employees_list");
-		usort($viewdata, function($a, $b) 
-		{
-			return strcasecmp($a->employee_name, $b->employee_name); // A-Z
-		});
+    {
+        $this->enforceLogin(); // Run the middleware check
+        $viewdata = $this -> model -> selectData ("employees_list");
+        usort($viewdata, function($a, $b) 
+        {
+            return strcasecmp($a->employee_name, $b->employee_name); // A-Z
+        });
 
-		if(isset($_REQUEST['edit_employee']))
-		{
-			$employee_id = $_REQUEST['edit_employee_id'];
-			$employee_name = $_REQUEST['edit_employee_name'];
-			$bank_ac_number = $_REQUEST['edit_bank_ac_number'];
-			$bank_ifsc_code = $_REQUEST['edit_bank_ifsc_code'];
-			$salary = $_REQUEST['edit_salary'];
-
-			$active_status = isset($_REQUEST['active']) ? $_REQUEST['active'] : 0;
+        if(isset($_REQUEST['edit_employee']))
+        {
+            $employee_id = $_REQUEST['edit_employee_id'];
+            $employee_name = $_REQUEST['edit_employee_name'];
             
-			
-			$edit_data=[
+            // --- Bank Account Number Edit Logic ---
+            $bank_ac_number = empty($_REQUEST['edit_bank_ac_number']) ? '0' : $_REQUEST['edit_bank_ac_number'];
+            // --- IFSC Code Edit Logic ---
+            $bank_ifsc_code = empty($_REQUEST['edit_bank_ifsc_code']) ? '0' : $_REQUEST['edit_bank_ifsc_code'];
+            
+            // --- Salary Edit Logic ---
+            // If the salary is empty (null or an empty string), set it to '0'.
+            $salary = empty($_REQUEST['edit_salary']) ? '0' : $_REQUEST['edit_salary']; 
+            // -------------------------
+
+            $active_status = isset($_REQUEST['active']) ? $_REQUEST['active'] : 0;
+            
+            
+            $edit_data=[
                 "employee_name"  => $employee_name, 
                 "bank_ac_number" => $bank_ac_number, 
                 "bank_ifsc_code" => $bank_ifsc_code,
                 "salary" => $salary,
                 "active"         => $active_status // comment
             ];  
-				
-			// echo "<pre>";
-			// echo $edit_data;
-			// exit();	
+                
+            // echo "<pre>";
+            // echo $edit_data;
+            // exit();  
 
-			$result = $this -> model -> updateData ("employees_list", $edit_data, ['employee_id'=>$employee_id]);
+            $result = $this -> model -> updateData ("employees_list", $edit_data, ['employee_id'=>$employee_id]);
 
-			// echo "<h2>DEBUGGING UPDATE</h2>";
-			// echo "<p>Employee ID: " . $employee_id . "</p>";
-			// echo "<p>Active Status Submitted: " . $active_status . "</p>";
-			// echo "<pre>Data to Update:\n";
-			// print_r($edit_data);
-			// exit;
+            // echo "<h2>DEBUGGING UPDATE</h2>";
+            // echo "<p>Employee ID: " . $employee_id . "</p>";
+            // echo "<p>Active Status Submitted: " . $active_status . "</p>";
+            // echo "<pre>Data to Update:\n";
+            // print_r($edit_data);
+            // exit;
 
 
-			if(isset($result))
-			{
-				// echo "Update Success";
-				header("Location: master");
-				exit();
-			}
-			else
-			{
-				echo "Error Updating Database";
-			}
-		}
+            if(isset($result))
+            {
+                // echo "Update Success";
+                header("Location: master");
+                exit();
+            }
+            else
+            {
+                echo "Error Updating Database";
+            }
+        }
 
-		if(isset($_REQUEST['add_employee']))
-		{
-			$employee_name=$_REQUEST['employee_name'];
-			$bank_ac_number=$_REQUEST['bank_ac_number'];
-			$bank_ifsc_code=$_REQUEST['bank_ifsc_code'];
-			$salary=$_REQUEST['salary'];
-			$active_status = 1; 
+        if(isset($_REQUEST['add_employee']))
+        {
+            $employee_name=$_REQUEST['employee_name'];
+            
+            // --- Bank Account Number Add Logic ---
+            $bank_ac_number = empty($_REQUEST['bank_ac_number']) ? '0' : $_REQUEST['bank_ac_number'];
+            // --- IFSC Code Add Logic ---
+            $bank_ifsc_code = empty($_REQUEST['bank_ifsc_code']) ? '0' : $_REQUEST['bank_ifsc_code'];
+            
+            // --- Salary Add Logic ---
+            // If the salary is empty (null or an empty string), set it to '0'.
+            $salary = empty($_REQUEST['salary']) ? '0' : $_REQUEST['salary'];
+            // ------------------------
+            
+            $active_status = 1; 
 
-			$data=[
+            $data=[
                 "employee_name"  => $employee_name, 
                 "bank_ac_number" => $bank_ac_number, 
                 "bank_ifsc_code" => $bank_ifsc_code,
@@ -218,45 +214,48 @@ class Controller
                 "active"         => $active_status // comment
             ];
 
-			$result = $this -> model -> insertData ("employees_list", $data);
-			if(isset($result))
-			{
-				// echo "Data Inserted";
-				header("Location: master");
-				exit();
-			}
-			else
-			{
-				echo "Error Inserting Data";
-			}
-		}
+            $result = $this -> model -> insertData ("employees_list", $data);
+            if(isset($result))
+            {
+                // echo "Data Inserted";
+                header("Location: master");
+                exit();
+            }
+            else
+            {
+                echo "Error Inserting Data";
+            }
+        }
 
-		if(isset($_REQUEST['del_employee']))
-		{
-			$employeeid = $_REQUEST['employee_id'];
-			// echo $employeeid;
-			// exit();
-			$result = $this -> model -> deleteData ("employees_list", ['employee_id' => $employeeid]);
-			if(isset($result))
-			{
-				// echo "Data Deleted Successfuly";
-				header("Location: master");
-				exit();
-			}
-			else
-			{
-				echo "Error Deleting Data";
-			}
-		}
+        if(isset($_REQUEST['del_employee']))
+        {
+            $employeeid = $_REQUEST['employee_id'];
+            // echo $employeeid;
+            // exit();
+            $result = $this -> model -> deleteData ("employees_list", ['employee_id' => $employeeid]);
+            if(isset($result))
+            {
+                // echo "Data Deleted Successfuly";
+                header("Location: master");
+                exit();
+            }
+            else
+            {
+                echo "Error Deleting Data";
+            }
+        }
 
-		include ('app/views/master.php');
+        include ('app/views/master.php');
 
-	}
-
+    }
+	
 	public function attendance()
     {
         $this->enforceLogin(); // Run the middleware check
         $selected_date = isset($_REQUEST['date']) ? $_REQUEST['date'] : date('Y-m-d');
+
+		$prev_date = date('Y-m-d', strtotime($selected_date . ' -1 day'));
+		$next_date = date('Y-m-d', strtotime($selected_date . ' +1 day'));
         
         // Initialize variables to empty arrays so the view doesn't throw errors if they're not set.
         $employee_names = [];
@@ -290,11 +289,21 @@ class Controller
                 // CRUCIAL: Get the CURRENT salary from the map for the snapshot
                 $current_salary = $employee_salary_map[$employee_id] ?? 0.00;
                 
+                // NEW: Function to safely convert input to float, treating empty string as 0.00
+                $safe_float = function($value) {
+                    // Check if the value is set, not empty, and not just whitespace
+                    if (isset($value) && is_numeric($value) && $value !== '') {
+                        return (float)$value;
+                    }
+                    return 0.00;
+                };
+
                 // Prepare attendance data fields that are common to both INSERT and UPDATE
                 $attendance_fields = [
-                    'daily_attendance' => isset($entry['attendance']) ? (float)$entry['attendance'] : 0.00,
-                    'extra_work' => isset($entry['extra_work']) ? (float)$entry['extra_work'] : 0.00,
-                    'advance_taken' => isset($entry['advance_taken']) ? (float)$entry['advance_taken'] : 0.00,
+                    // Apply the new safe_float function to automatically convert empty/null to 0.00
+                    'daily_attendance' => $safe_float($entry['attendance'] ?? null),
+                    'extra_work' => $safe_float($entry['extra_work'] ?? null),
+                    'advance_taken' => $safe_float($entry['advance_taken'] ?? null),
                 ];
                 
                 // Check for existing record 
@@ -348,168 +357,85 @@ class Controller
         include ('app/views/attendance.php');
     }
 
-	// public function attendance()
-	// {
-	// 	$this->enforceLogin(); // Run the middleware check
-	// 	$selected_date = isset($_REQUEST['date']) ? $_REQUEST['date'] : date('Y-m-d');
-	// 	// if(isset($_REQUEST['date']))
-	// 	// {
-	// 	// 	var_dump($_GET); 
-	// 	// 	exit;
-	// 	// 	// echo $selected_date;
-	// 	// 	// exit;
-	// 	// }
-		
 
-	// 	// Initialize variables to empty arrays so the view doesn't throw errors if they're not set.
-    //     $employee_names = [];
-    //     $attendance_map = [];
-
-
-    //     // 2. Handle Data Submission (Saving Attendance)
-    //     if (isset($_POST['save_attendance']) && isset($_POST['entries'])) {
-    //         $data_to_save = $_POST['entries'];
-
-    //         foreach ($data_to_save as $employee_id => $entry) {
-                
-    //             // Ensure employee_id is an integer and input fields are present
-    //             $employee_id = (int)$employee_id;
-                
-    //             // Sanitize and type-cast incoming data
-    //             $attendance_data = [
-    //                 'entry_date' => $selected_date,
-    //                 'employee_id' => $employee_id,
-    //                 'daily_attendance' => isset($entry['attendance']) ? (float)$entry['attendance'] : 0.00,
-    //                 'extra_work' => isset($entry['extra_work']) ? (float)$entry['extra_work'] : 0.00,
-    //                 // Cast advance_taken as float/decimal
-    //                 'advance_taken' => isset($entry['advance_taken']) ? (float)$entry['advance_taken'] : 0.00,
-    //             ];
-                
-    //             // Check for existing record (assuming selectDataWithCondition exists in Model)
-    //             $existing_records = $this->model->selectDataWithCondition(
-    //                 'daily_attendance_report',
-    //                 ['entry_date' => $selected_date, 'employee_id' => $employee_id]
-    //             );
-
-    //             if (!empty($existing_records)) {
-    //                 // UPDATE existing record
-    //                 $this->model->updateData(
-    //                     'daily_attendance_report',
-    //                     $attendance_data,
-    //                     ['entry_id' => $existing_records[0]->entry_id]
-    //                 );
-    //             } else {
-    //                 // INSERT new record
-    //                 $this->model->insertData('daily_attendance_report', $attendance_data);
-    //             }
-    //         }
-
-    //         // Redirect back to the same page with the selected date and success status
-    //         header("Location: attendance?date=" . $selected_date . "&status=saved");
-    //         exit();
-    //     }
-
-    //     // 3. Fetch Data for Display
+    public function monthly_report()
+    {
+        $this->enforceLogin(); 
+        // Run the middleware check
         
-    //     // Fetch all employees (renamed back to $employee_names for consistency with the view)
-    //     $employee_names = $this->model->selectData('employees_list');
-	// 	// $employee_names = $this->model->selectDataWithCondition('employees_list', ['active' => 1]); 
+        // 1. Determine the selected month and year
+        // Default to the current month/year if nothing is selected
+        $selected_year_month = isset($_REQUEST['month']) ? $_REQUEST['month'] : date('Y-m'); 
         
-	// 	usort($employee_names, function($a, $b) 
-	// 	{
-	// 		// strcasecmp compares strings without worrying about uppercase/lowercase
-	// 		return strcasecmp($a->employee_name, $b->employee_name); 
-	// 	});
-
-    //     // Fetch existing attendance data for the selected date
-    //     $existing_attendance = $this->model->selectDataWithCondition(
-    //         'daily_attendance_report',
-    //         ['entry_date' => $selected_date]
-    //     );
+        // Split the 'YYYY-MM' string into separate year and month variables
+        list($year, $month) = explode('-', $selected_year_month);
         
-    //     // Convert attendance records into an associative array keyed by employee_id for easy lookup in the view
-    //     $attendance_map = [];
-    //     foreach ($existing_attendance as $record) {
-    //         // $record is an stdClass Object
-    //         $attendance_map[$record->employee_id] = $record;
-    //     }
+        // Calculate the total number of days in the selected month (e.g., 30 or 31)
+        $days_in_month = cal_days_in_month(CAL_GREGORIAN, $month, $year);
 
-    //     // Pass all necessary variables to the view
-    //     include ('app/views/attendance.php');
+        // --- NEW: Calculate previous and next month links for navigation ---
+        $prev_month_ts = strtotime($selected_year_month . '-01 -1 month');
+        $next_month_ts = strtotime($selected_year_month . '-01 +1 month');
+        
+        $prev_month = date('Y-m', $prev_month_ts);
+        $next_month = date('Y-m', $next_month_ts);
+        // ------------------------------------------------------------------
 
+        // 2. Fetch data
+        
+        // Fetch ALL employees (active or not) to include historical data in the report
+        $employee_names = $this->model->selectData('employees_list'); 
 
-	// }
+        // Sort employees by name (A-Z)
+        usort($employee_names, function($a, $b) 
+        {
+            return strcasecmp($a->employee_name, $b->employee_name); 
+        });
 
+        // Fetch ALL attendance records for the selected month/year
+        // Note: This assumes your Model can handle a LIKE query or a range query
+        $attendance_records = $this->model->selectDataWithCondition(
+            'daily_attendance_report',
+            ['entry_date LIKE' => "{$selected_year_month}%"] // e.g., '2025-10%'
+        );
+        
+        // 3. Process data into a report map
+        
+        /* * The report map will store summarized data:
+        * [employee_id] => [
+        * 'total_shifts' => 22,
+        * 'total_extra' => 500,
+        * 'total_advance' => 1000,
+        * 'dates' => ['2025-10-01' => {record}, '2025-10-02' => {record}, ...]
+        * ]
+        */
+        $monthly_report_map = [];
 
-	public function monthly_report()
-	{
-		$this->enforceLogin(); 
-		// Run the middleware check
-		// 1. Determine the selected month and year
-		// Default to the current month/year if nothing is selected
-		$selected_year_month = isset($_REQUEST['month']) ? $_REQUEST['month'] : date('Y-m'); 
-		
-		// Split the 'YYYY-MM' string into separate year and month variables
-		list($year, $month) = explode('-', $selected_year_month);
-		
-		// Calculate the total number of days in the selected month (e.g., 30 or 31)
-		$days_in_month = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+        foreach ($attendance_records as $record) {
+            $employee_id = $record->employee_id;
 
-		// 2. Fetch data
-		
-		// Fetch ALL employees (active or not) to include historical data in the report
-		$employee_names = $this->model->selectData('employees_list'); 
+            // Initialize map entry if it doesn't exist
+            if (!isset($monthly_report_map[$employee_id])) {
+                $monthly_report_map[$employee_id] = [
+                    'total_shifts' => 0,
+                    'total_extra' => 0.00,
+                    'total_advance' => 0.00,
+                    'dates' => []
+                ];
+            }
 
-		// Sort employees by name (A-Z)
-		usort($employee_names, function($a, $b) 
-		{
-			return strcasecmp($a->employee_name, $b->employee_name); 
-		});
+            // Aggregate totals
+            $monthly_report_map[$employee_id]['total_shifts'] += $record->daily_attendance;
+            $monthly_report_map[$employee_id]['total_extra'] += $record->extra_work;
+            $monthly_report_map[$employee_id]['total_advance'] += $record->advance_taken;
+            
+            // Store the daily record by date for detailed view
+            $monthly_report_map[$employee_id]['dates'][$record->entry_date] = $record;
+        }
 
-		// Fetch ALL attendance records for the selected month/year
-		// Note: This assumes your Model can handle a LIKE query or a range query
-		$attendance_records = $this->model->selectDataWithCondition(
-			'daily_attendance_report',
-			['entry_date LIKE' => "{$selected_year_month}%"] // e.g., '2025-10%'
-		);
-		
-		// 3. Process data into a report map
-		
-		/* * The report map will store summarized data:
-		* [employee_id] => [
-		* 'total_shifts' => 22,
-		* 'total_extra' => 500,
-		* 'total_advance' => 1000,
-		* 'dates' => ['2025-10-01' => {record}, '2025-10-02' => {record}, ...]
-		* ]
-		*/
-		$monthly_report_map = [];
-
-		foreach ($attendance_records as $record) {
-			$employee_id = $record->employee_id;
-
-			// Initialize map entry if it doesn't exist
-			if (!isset($monthly_report_map[$employee_id])) {
-				$monthly_report_map[$employee_id] = [
-					'total_shifts' => 0,
-					'total_extra' => 0.00,
-					'total_advance' => 0.00,
-					'dates' => []
-				];
-			}
-
-			// Aggregate totals
-			$monthly_report_map[$employee_id]['total_shifts'] += $record->daily_attendance;
-			$monthly_report_map[$employee_id]['total_extra'] += $record->extra_work;
-			$monthly_report_map[$employee_id]['total_advance'] += $record->advance_taken;
-			
-			// Store the daily record by date for detailed view
-			$monthly_report_map[$employee_id]['dates'][$record->entry_date] = $record;
-		}
-
-		// 4. Load the view, passing all data
-		include ('app/views/monthly_report.php');
-	}
+        // 4. Load the view, passing all data
+        include ('app/views/monthly_report.php');
+    }
 
 	public function logout()
 	{
@@ -538,20 +464,20 @@ class Controller
 		exit();
 	}
 
-	// public function salary_report()
-	// {
-	// 	$this->enforceLogin(); // Run the middleware check
-	// 	include ('app/views/salary_report.php');
-	// }
-
-
-
-    public function salary_report()
+	public function salary_report()
     {
         $this->enforceLogin(); 
         
         $selected_year_month = isset($_REQUEST['month']) ? $_REQUEST['month'] : date('Y-m'); 
         
+        // --- NEW: Calculate previous and next month links for navigation ---
+        $prev_month_ts = strtotime($selected_year_month . '-01 -1 month');
+        $next_month_ts = strtotime($selected_year_month . '-01 +1 month');
+        
+        $prev_month = date('Y-m', $prev_month_ts);
+        $next_month = date('Y-m', $next_month_ts);
+        // ------------------------------------------------------------------
+
         $employee_list = $this->model->selectData('employees_list'); 
         $attendance_records = $this->model->selectDataWithCondition(
             'daily_attendance_report',
@@ -600,8 +526,11 @@ class Controller
             // Final Calculation
             $net_due = $total_earnings + $total_extra - $total_advance;
 
-            // FIX: Sum ALL net_due amounts for the comprehensive grand total
-            $total_payable_grand_total += $net_due;
+            // *** CHANGE 2: CONDITIONALLY ADD to the Grand Total ***
+            // Now, only positive net_due values are included in the grand total sum.
+            if ($net_due > 0.00) {
+                 $total_payable_grand_total += $net_due;
+            }
             
             $salary_details[] = (object)[
                 'employee_name' => $employee->employee_name,
@@ -619,13 +548,16 @@ class Controller
         $viewdata = [
             'salary_details' => $salary_details,
             'selected_year_month' => $selected_year_month,
-            'total_payable_grand_total' => $total_payable_grand_total
+            'total_payable_grand_total' => $total_payable_grand_total,
+            // --- NEW: Pass calculated dates to the view ---
+            'prev_month' => $prev_month,
+            'next_month' => $next_month
+            // ----------------------------------------------
         ];
 
         include ('app/views/salary_report.php');
     }
 
-	// ... inside Controller.php ...
 
     public function export_salary_report()
     {
@@ -633,7 +565,7 @@ class Controller
         
         $selected_year_month = isset($_REQUEST['month']) ? $_REQUEST['month'] : date('Y-m'); 
         
-        // --- DATA COLLECTION (Skip for brevity, remains the same) ---
+        // --- DATA COLLECTION (Skipping logic block for brevity, assumed unchanged) ---
         $employee_list = $this->model->selectData('employees_list'); 
         $attendance_records = $this->model->selectDataWithCondition(
             'daily_attendance_report',
@@ -660,11 +592,10 @@ class Controller
             $monthly_report_map[$employee_id]['total_earnings'] += ((float)$record->daily_attendance * $daily_salary);
         }
         
-        // --- FINAL DATA PREPARATION (Applying Zero-Width Space Fix and Capitalization) ---
+        // --- FINAL DATA PREPARATION (Fixing Symbols, Filtering Positive Net Due) ---
         $export_data = [];
         
-        // Define the Zero-Width Space character for clean Excel output
-        $zws = "\u{200B}";
+        // *** REMOVED: Zero-Width Space is no longer defined or used. ***
         
         foreach ($employee_list as $employee) {
             $employee_id = $employee->employee_id;
@@ -680,16 +611,21 @@ class Controller
             
             $net_due = $total_earnings + $total_extra - $total_advance;
 
+            // *** FIX 1: Only include records where net_due is greater than zero ***
+            if ($net_due <= 0.00) {
+                continue; 
+            }
+
             // Prepare the array for CSV output
             $export_data[] = [
                 // Capitalization
                 'Employee Name' => strtoupper($employee->employee_name),
                 
-                // Zero-Width Space Prefix + Capitalization
-                'Bank AC Number' => $zws . strtoupper((string)$employee->bank_ac_number),
+                // *** FIX 2: Removed $zws prefix to show raw value ***
+                'Bank AC Number' => strtoupper((string)$employee->bank_ac_number),
                 
-                // Zero-Width Space Prefix + Capitalization
-                'IFSC Code' => $zws . strtoupper($employee->bank_ifsc_code),
+                // *** FIX 2: Removed $zws prefix to show raw value ***
+                'IFSC Code' => strtoupper($employee->bank_ifsc_code),
                 
                 'Net Due (INR)' => number_format($net_due, 2, '.', ''),
             ];
@@ -713,8 +649,132 @@ class Controller
         
         fclose($output);
         exit();
-	}
+    }
 
+	public function export_salary_report_xlsx()
+    {
+        $this->enforceLogin(); 
+        
+        $selected_year_month = isset($_REQUEST['month']) ? $_REQUEST['month'] : date('Y-m'); 
+        
+        // --- 1. DATA COLLECTION (Same logic as CSV export) ---
+        $employee_list = $this->model->selectData('employees_list'); 
+        $attendance_records = $this->model->selectDataWithCondition(
+            'daily_attendance_report',
+            ['entry_date LIKE' => "{$selected_year_month}%"] 
+        );
+        
+        $monthly_report_map = [];
+        foreach ($attendance_records as $record) {
+            $employee_id = $record->employee_id;
+            if (!isset($monthly_report_map[$employee_id])) {
+                $monthly_report_map[$employee_id] = [
+                    'total_shifts' => 0,
+                    'total_extra' => 0.00,
+                    'total_advance' => 0.00,
+                    'total_earnings' => 0.00
+                ];
+            }
+            $monthly_report_map[$employee_id]['total_shifts'] += $record->daily_attendance;
+            $monthly_report_map[$employee_id]['total_extra'] += $record->extra_work;
+            $monthly_report_map[$employee_id]['total_advance'] += $record->advance_taken;
+            
+            $daily_salary = (float)($record->salary_snapshot ?? 0.00);
+            $monthly_report_map[$employee_id]['total_earnings'] += ((float)$record->daily_attendance * $daily_salary);
+        }
+        
+        // --- 2. FINAL DATA PREPARATION ---
+        $export_data = [];
+        $grand_total = 0.00; // Total of only POSITIVE net_due values
+
+        // *** Setting up the custom headers ***
+        $export_data[] = [
+            'Employee Name',
+            'Bank Account Number',
+            'Bank IFSC Code',
+            'Net Due' // Removed (INR)
+        ];
+        
+        foreach ($employee_list as $employee) {
+            $employee_id = $employee->employee_id;
+            $report = $monthly_report_map[$employee_id] ?? null;
+            
+            if ($report === null && $employee->active != 1) {
+                continue;
+            }
+
+            $total_earnings = $report['total_earnings'] ?? 0.00;
+            $total_extra = $report['total_extra'] ?? 0.00;
+            $total_advance = $report['total_advance'] ?? 0.00;
+            
+            $net_due = $total_earnings + $total_extra - $total_advance;
+
+            // Filter 1: Only include records where net_due is greater than zero
+            if ($net_due <= 0.00) {
+                continue; 
+            }
+
+            // Calculate the total of payable salaries
+            $grand_total += $net_due;
+
+            // Prepare the array for Excel processing.
+            $export_data[] = [
+                'Employee Name' => strtoupper($employee->employee_name),
+                'Bank Account Number' => (string)$employee->bank_ac_number, 
+                'Bank IFSC Code' => strtoupper((string)$employee->bank_ifsc_code),
+                'Net Due' => $net_due, // Use raw numeric value
+            ];
+        }
+
+        // *** FIX 3: Add the TOTAL row at the end ***
+        $export_data[] = [
+            'Employee Name' => 'TOTAL',
+            'Bank Account Number' => '',
+            'Bank IFSC Code' => '',
+            'Net Due' => $grand_total,
+        ];
+
+
+        // --- 3. XLSX GENERATION AND DOWNLOAD SETUP (Simplified Formatting) ---
+        
+        $filename = "salary_report_{$selected_year_month}.xlsx";
+        
+        // Set headers for XLSX download
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Cache-Control: max-age=0'); 
+
+        // 1. Initialize Spreadsheet
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        
+        // 2. Populate data starting from A1 (includes headers)
+        $sheet->fromArray($export_data, NULL, 'A1');
+
+        // 3. Apply necessary formatting without excessive styling
+        
+        // Get the last row index for the Total row
+        $last_data_row = count($export_data);
+
+        // Auto size columns for readability (only essential styling)
+        foreach (range('A', 'D') as $columnID) {
+            $sheet->getColumnDimension($columnID)->setAutoSize(true);
+        }
+
+        // IMPORTANT: Format Column B (Bank AC Number) and C (IFSC) as TEXT to prevent data loss.
+        // This is necessary even without custom styling.
+        $sheet->getStyle('B2:C' . $last_data_row)->getNumberFormat()->setFormatCode(\PhpOffice\PhpSpreadsheet\Style\NumberFormat::FORMAT_TEXT);
+        
+        // Format Column D (Net Due) as a simple number with 2 decimals (no currency symbol).
+        // Apply to the entire column for consistency, including the total row.
+        $sheet->getStyle('D:D')->getNumberFormat()->setFormatCode('0.00'); 
+        
+
+        // 4. Create the writer and stream the file
+        $writer = \PhpOffice\PhpSpreadsheet\IOFactory::createWriter($spreadsheet, 'Xlsx');
+        $writer->save('php://output');
+        exit();
+    }
 
 }
 ?>

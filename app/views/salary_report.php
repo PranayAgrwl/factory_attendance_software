@@ -10,6 +10,7 @@
 
     <form action="salary_report" method="GET">
         <div class="row align-items-end mb-4">
+            
             <div class="col-auto">
                 <label for="inputMonth" class="form-label">Select Month:</label>
                 <input type="month" class="form-control" id="inputMonth" name="month" value="<?php echo htmlspecialchars($selected_year_month); ?>" required>
@@ -17,19 +18,43 @@
             <div class="col-auto">
                 <button type="submit" class="btn btn-primary">Generate Report</button>
             </div>
+
+            <!-- Previous Month Button -->
+            <div class="col-auto">
+                <a href="salary_report?month=<?php echo htmlspecialchars($prev_month); ?>" class="btn btn-outline-secondary">
+                    &lt; Prev Month
+                </a>
+            </div>
+
+            <!-- Next Month Button -->
+            <div class="col-auto">
+                <a href="salary_report?month=<?php echo htmlspecialchars($next_month); ?>" class="btn btn-outline-secondary">
+                    Next Month &gt;
+                </a>
+            </div>
             
+            <!-- EDITED: Now clearly exports CSV -->
             <div class="col-auto">
                 <a 
                     href="export_salary_report?month=<?php echo htmlspecialchars($selected_year_month); ?>" 
                     class="btn btn-success"
                 >
-                    Export to Excel (.CSV)
+                    Export to CSV
                 </a>
             </div>
+            
+            <!-- NEW: Button for XLSX Export -->
+            <div class="col-auto">
+                <a 
+                    href="export_salary_report_xlsx?month=<?php echo htmlspecialchars($selected_year_month); ?>" 
+                    class="btn btn-info text-white "
+                >
+                    Export to Excel (.XLSX)
+                </a>
             </div>
+        </div>
     </form>
 
-<!-- // ... rest of the view ... -->
     
     <hr>
     
@@ -40,12 +65,13 @@
                     <th style="min-width: 200px;">Employee Name</th>
                     <th>Bank A/C Number</th>
                     <th>Bank IFSC Code</th>
-                    <th class="text-end" style="min-width: 150px;">Net Due (₹)</th>
+                    <!-- Updated column header to reflect the filter -->
+                    <th class="text-end" style="min-width: 150px;">Net Payable (₹)</th> 
                 </tr>
             </thead>
             <tbody>
                 <?php
-                // Use the grand total passed from the controller
+                // Use the grand total passed from the controller (this total includes all employees, positive/negative)
                 $grand_total = $total_payable_grand_total ?? 0.00;
                 $employees_displayed = 0; // Tracks if the main loop runs
 
@@ -53,16 +79,17 @@
                     
                     foreach ($salary_details as $detail) {
                         
-                        // FIX: Remove the > 0.00 filter to show ALL balances
+                        // *** CRITICAL CHANGE: Only display records where Net Due is greater than 0 ***
+                        if ($detail->net_due <= 0.00) {
+                            continue; 
+                        }
+                        // *************************************************************************
+                        
                         $employees_displayed++; 
 
-                        // Conditional coloring: green for payable, red for recoverable/negative
-                        // $text_class = ($detail->net_due > 0) ? 'text-success' : (($detail->net_due < 0) ? 'text-danger' : 'text-muted');
-                        $text_class = ($detail->net_due > 0) ? '' : (($detail->net_due < 0) ? '' : '');
-                        
-                        // Conditional row highlight for negative balances
-                        // $row_class = ($detail->net_due < 0) ? 'table-warning' : '';
-                        $row_class = ($detail->net_due < 0) ? '' : '';
+                        // Note: Conditional coloring/row classes are removed to keep the table clean for Payouts
+                        $text_class = '';
+                        $row_class = '';
                 ?>
                     <tr class="<?php echo $row_class; ?>">
                         <td class="fw-bold"><?php echo htmlspecialchars($detail->employee_name); ?></td>
@@ -77,15 +104,13 @@
                     if ($employees_displayed > 0) { 
                         
                         // Grand Total coloring
-                        // $total_text_class = ($grand_total > 0) ? 'text-success' : (($grand_total < 0) ? 'text-danger' : 'text-muted');
-                        // $total_row_class = ($grand_total < 0) ? 'table-danger' : 'table-info';
-
-						$total_text_class = ($grand_total > 0) ? '' : (($grand_total < 0) ? '' : '');
+                        $total_text_class = ($grand_total > 0) ? '' : (($grand_total < 0) ? '' : '');
                         $total_row_class = ($grand_total < 0) ? '' : '';
 
                 ?>
                     <tr class="<?php echo $total_row_class; ?> fw-bold">
-                        <td colspan="3" class="text-end">GRAND NET BALANCE:</td>
+                        <!-- Note: The displayed GRAND NET BALANCE is for ALL employees, not just the filtered list. -->
+                        <td colspan="3" class="text-end">GRAND NET BALANCE (ALL EMPLOYEES):</td>
                         <td class="text-end <?php echo $total_text_class; ?>"><?php echo number_format($grand_total, 2); ?></td>
                     </tr>
                 <?php
@@ -93,8 +118,8 @@
                 } 
                 
                 // If no employee data was found at all
-                if (empty($salary_details)) {
-                    echo '<tr><td colspan="4" class="text-center">No employee data found. Please check Master setup or Attendance records.</td></tr>';
+                if ($employees_displayed === 0) {
+                    echo '<tr><td colspan="4" class="text-center">No payable salaries found for this month, or no employee data exists.</td></tr>';
                 }
                 ?>
             </tbody>
