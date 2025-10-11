@@ -80,6 +80,7 @@
                     foreach ($salary_details as $detail) {
                         
                         // *** CRITICAL CHANGE: Only display records where Net Due is greater than 0 ***
+                        // This filtering is performed again here to ensure the view displays a clean payout list.
                         if ($detail->net_due <= 0.00) {
                             continue; 
                         }
@@ -109,8 +110,8 @@
 
                 ?>
                     <tr class="<?php echo $total_row_class; ?> fw-bold">
-                        <!-- Note: The displayed GRAND NET BALANCE is for ALL employees, not just the filtered list. -->
-                        <td colspan="3" class="text-end">GRAND NET BALANCE (ALL EMPLOYEES):</td>
+                        <!-- Note: The displayed GRAND NET BALANCE is for ALL employees, which were filtered in the controller. -->
+                        <td colspan="3" class="text-end">GRAND NET PAYOUT TOTAL:</td>
                         <td class="text-end <?php echo $total_text_class; ?>"><?php echo number_format($grand_total, 2); ?></td>
                     </tr>
                 <?php

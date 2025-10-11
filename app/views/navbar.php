@@ -10,7 +10,10 @@
           <a class="nav-link" href="index">Home</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" href="master">Master</a>
+          <a class="nav-link" href="master">Employee List</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="salary">Salary</a>
         </li>
         <li class="nav-item">
           <a class="nav-link" href="attendance">Attendance</a>
@@ -19,7 +22,7 @@
           <a class="nav-link" href="monthly_report">Monthly Attendance Report</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" href="salary_report">Salary Report</a>
+          <a class="nav-link" href="salary_report">Monthly Salary Report</a>
         </li>
         <!-- <li class="nav-item dropdown hover-dropdown">
           <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Dropdown</a>

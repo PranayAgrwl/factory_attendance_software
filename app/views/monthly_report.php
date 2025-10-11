@@ -3,6 +3,31 @@
     include_once('navbar.php');
 ?>
 
+<style>
+    .sheet-container {
+        overflow-x: auto;
+        max-width: 100%;
+        margin-bottom: 2rem;
+    }
+    .monthly-report-table {
+        min-width: 1000px; /* Ensure table is wide enough to scroll */
+    }
+    .monthly-report-table th, .monthly-report-table td {
+        white-space: nowrap;
+        text-align: center;
+        padding: 0.5rem;
+    }
+    .monthly-report-table thead th {
+        vertical-align: middle;
+        background-color: #f8f9fa;
+        border-bottom: 2px solid #dee2e6;
+    }
+    /* Style for the start of a new employee group */
+    .employee-group-start {
+        border-top: 3px solid #000;
+    }
+</style>
+
 <div class="container-fluid mt-3">
     <div class="col-md-12">
         <h1 class="display-5 fw-bold">Monthly Attendance Report for: <?php echo htmlspecialchars($selected_year_month); ?></h1>
@@ -19,14 +44,14 @@
                 <button type="submit" class="btn btn-primary">Generate Report</button>
             </div>
 
-            <!-- NEW: Previous Month Button -->
+            <!-- Previous Month Button -->
             <div class="col-auto">
                 <a href="monthly_report?month=<?php echo htmlspecialchars($prev_month); ?>" class="btn btn-outline-secondary">
                     &lt; Prev Month
                 </a>
             </div>
- 
-            <!-- NEW: Next Month Button -->
+   
+            <!-- Next Month Button -->
             <div class="col-auto">
                 <a href="monthly_report?month=<?php echo htmlspecialchars($next_month); ?>" class="btn btn-outline-secondary">
                     Next Month &gt;
@@ -67,8 +92,11 @@
                         $employee_id = $employee->employee_id;
                         $report = $monthly_report_map[$employee_id] ?? null;
 
-                        // Only show the employee if they have records OR are currently active
-                        if ($report === null && $employee->active != 1) {
+                        // NEW: Get the fixed daily wage for this month from the map
+                        $daily_wage = $monthly_salary_map[$employee_id] ?? 0.00;
+
+                        // Only show the employee if they have records OR are currently active OR have a daily wage set
+                        if ($report === null && $employee->active != 1 && $daily_wage == 0.00) {
                             continue;
                         }
 
@@ -76,16 +104,9 @@
                         $total_shifts = $report['total_shifts'] ?? 0;
                         $total_extra = $report['total_extra'] ?? 0.00;
                         $total_advance = $report['total_advance'] ?? 0.00;
-                        $total_earnings = 0.00; // Recalculate based on snapshot
-                        
-                        // Calculate total earnings using the salary snapshot from each daily record
-                        if ($report && isset($report['dates'])) {
-                            foreach ($report['dates'] as $daily_record) {
-                                // IMPORTANT: Use the recorded salary_snapshot for the calculation
-                                $daily_salary = (float)($daily_record->salary_snapshot ?? 0.00);
-                                $total_earnings += ((float)$daily_record->daily_attendance * $daily_salary);
-                            }
-                        }
+
+                        // Calculate total earnings: Total Shifts * Daily Wage (from monthwise_salary table)
+                        $total_earnings = $total_shifts * $daily_wage; 
                         
                         // CALCULATION: Net Due
                         $net_due = $total_earnings + $total_extra - $total_advance;
@@ -93,8 +114,8 @@
 
 
                         // Define the metrics we want to display in the three rows
-                        // CHANGED: The 'shifts' metric label is now 'Earning'
                         $metrics = [
+                            // Daily Earning is calculated by Daily Attendance * Daily Wage
                             'shifts' => ['label' => 'Daily Earning', 'total' => $total_earnings, 'column' => 'daily_attendance', 'is_earning' => true],
                             'extra' => ['label' => 'Extra Work', 'total' => $total_extra, 'column' => 'extra_work', 'is_earning' => false],
                             'advance' => ['label' => 'Advance Taken', 'total' => $total_advance, 'column' => 'advance_taken', 'is_earning' => false]
@@ -131,21 +152,23 @@
                                     $daily_value = 0.00;
                                     
                                     if ($metric_data['is_earning']) {
-                                        // NEW LOGIC: Calculate Daily Earning (Attendance x Snapshot Salary)
-                                        $daily_attendance = (float)($record->$col_name ?? 0.00);
-                                        $daily_salary = (float)($record->salary_snapshot ?? 0.00);
-                                        $daily_value = $daily_attendance * $daily_salary;
+                                        // CORRECTED LOGIC: Calculate Daily Earning (Attendance x Fixed Daily Wage for the month)
+                                        $daily_attendance = (float)($record->daily_attendance ?? 0.00);
+                                        $daily_value = $daily_attendance * $daily_wage; // *** USES FIXED $daily_wage ***
                                     } else {
-                                        // Existing logic for Extra Work and Advance Taken
+                                        // Logic for Extra Work and Advance Taken
                                         $daily_value = (float)($record->$col_name ?? 0.00);
                                     }
                                     
-                                    // --- EDITED: Check if value is > 0 or exactly 0 ---
+                                    // Check if value is > 0 or if there is a record for 0
                                     if ($daily_value > 0) {
                                         $display_value = number_format($daily_value, 2);
-                                    } else {
+                                    } else if (isset($record->$col_name) && $daily_value == 0.00) {
                                         // If record exists but value is 0, display '0.00'
                                         $display_value = '0.00'; 
+                                    } else {
+                                        // If no record exists, keep it as '-'
+                                        $display_value = '-';
                                     }
                                 }
                                 
@@ -164,8 +187,9 @@
                                 // Total Advance
                                 echo "<td rowspan='3' class='text-end fw-bold'>" . number_format($total_advance, 2) . "</td>";
                                 
-                                // NET DUE - NEW COLUMN (Final Result)
-                                echo "<td rowspan='3' class='text-end fw-bold bg-light'>" . number_format($net_due, 2) . "</td>";
+                                // NET DUE - NEW COLUMN (Final Result), highlight if negative
+                                $net_due_class = ($net_due < 0) ? 'text-danger' : 'text-success';
+                                echo "<td rowspan='3' class='text-end fw-bold bg-light {$net_due_class}'>" . number_format($net_due, 2) . "</td>";
                             }
 
                             echo "</tr>";

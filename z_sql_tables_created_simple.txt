@@ -4,59 +4,90 @@ CREATE DATABASE IF NOT EXISTS db_pranay_office_kptex;
 -- Use the newly created database
 USE db_pranay_office_kptex;
 
--- Delete the table if it already exists
+-- Delete tables in reverse dependency order
+DROP TABLE IF EXISTS user_history;
+DROP TABLE IF EXISTS monthwise_salary;
+DROP TABLE IF EXISTS daily_attendance_report;
 DROP TABLE IF EXISTS employees_list;
+DROP TABLE IF EXISTS users;
 
--- Create the employees_list table
+
+-- -----------------------------------------------------------
+-- Table: users
+-- -----------------------------------------------------------
+CREATE TABLE users (
+    user_id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    static_captcha VARCHAR(50) NOT NULL,
+    static_otp VARCHAR(50) NOT NULL,
+    authority ENUM('admin', 'regular') NOT NULL DEFAULT 'regular',
+    notes VARCHAR(255) NULL
+);
+
+
+-- -----------------------------------------------------------
+-- INSERT DATA: Initial users (new, user, admin)
+-- NOTE: In a real-world application, the 'password' column would store a secure hash (e.g., SHA-256) of the password, not the cleartext 'pran'.
+-- -----------------------------------------------------------
+INSERT INTO users (user_id, username, password, static_captcha, static_otp, authority, notes) VALUES
+(1, 'p', 'r', 'a', 'n', 'admin', 'Pranay Admin User');
+
+
+-- -----------------------------------------------------------
+-- Table: employees_list
+-- -----------------------------------------------------------
 CREATE TABLE employees_list (
     employee_id INT AUTO_INCREMENT PRIMARY KEY,
     employee_name VARCHAR(255) NOT NULL,
     bank_ac_number VARCHAR(50) NOT NULL,
     bank_ifsc_code VARCHAR(20) NOT NULL,
-    salary DECIMAL(10, 2) NOT NULL,
     active BOOLEAN NOT NULL DEFAULT 1,
-    create_time DATETIME DEFAULT CURRENT_TIMESTAMP
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_by_user_id INT NOT NULL,
+    FOREIGN KEY (created_by_user_id) REFERENCES users(user_id)
 );
 
--- Delete the table if it already exists
-DROP TABLE IF EXISTS daily_attendance_report;
 
--- Create the daily_attendance_report table
+-- -----------------------------------------------------------
+-- Table: daily_attendance_report
+-- -----------------------------------------------------------
 CREATE TABLE daily_attendance_report (
     entry_id INT AUTO_INCREMENT PRIMARY KEY,
     entry_date DATE NOT NULL,
     employee_id INT NOT NULL,
-    salary_snapshot DECIMAL(10, 2) DEFAULT 0.00 NOT NULL,
     daily_attendance DECIMAL(10, 2) DEFAULT 0.00,
     extra_work DECIMAL(10, 2) DEFAULT 0.00,
     advance_taken DECIMAL(10, 2) DEFAULT 0.00,
-    create_date DATETIME DEFAULT CURRENT_TIMESTAMP
+    create_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_by_user_id INT NOT NULL,
+    FOREIGN KEY (employee_id) REFERENCES employees_list(employee_id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by_user_id) REFERENCES users(user_id)
 );
 
 
--- Delete the table if it already exists
-DROP TABLE IF EXISTS users;
-
--- Table to store user credentials
-CREATE TABLE users (
-    user_id INT AUTO_INCREMENT PRIMARY KEY,
-    username VARCHAR(50) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL,
-    static_captcha VARCHAR(50) NOT NULL, 
-    static_otp VARCHAR(50) NOT NULL,
-    notes VARCHAR(255) NULL
+-- -----------------------------------------------------------
+-- Table: monthwise_salary
+-- -----------------------------------------------------------
+CREATE TABLE monthwise_salary (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    create_datetime DATETIME DEFAULT CURRENT_TIMESTAMP,
+    employee_id INT NOT NULL,
+    salary_month DATE NOT NULL COMMENT 'First day of the month',
+    salary DECIMAL(10, 2) DEFAULT 0.00,
+    FOREIGN KEY (employee_id) REFERENCES employees_list(employee_id) ON DELETE CASCADE
 );
 
 
--- Delete the table if it already exists
-DROP TABLE IF EXISTS user_history;
-
+-- -----------------------------------------------------------
+-- Table: user_history
+-- -----------------------------------------------------------
 CREATE TABLE user_history (
     history_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     login_time DATETIME NOT NULL,
     ip_address VARCHAR(45) NOT NULL,
-    -- Storing location info, allowing NULL since it's "not strict"
     latitude DECIMAL(10, 8) NULL,
-    longitude DECIMAL(11, 8) NULL
+    longitude DECIMAL(11, 8) NULL,
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
 );
