@@ -941,11 +941,6 @@ class Controller
     {
         $this->enforceLogin(); 
         
-        // 1. Determine the selected month (YYYY-MM format)
-        $selected_year_month_display = isset($_REQUEST['month']) ? $_REQUEST['month'] : date('Y-m');
-        // Convert to YYYY-MM-01 format for database queries (for DATE/datetime field comparison)
-        $selected_month_db_format = $selected_year_month_display . '-01'; 
-
         $status_message = '';
         $error_message = '';
         
@@ -957,24 +952,51 @@ class Controller
             $error_message = htmlspecialchars($_REQUEST['error_msg']);
         }
 
+        // 1. Determine the selected month (YYYY-MM format) and calculate navigation links
+        $current_date = new \DateTime();
+        $current_year_month = $current_date->format('Y-m');
+        
+        $selected_year_month_display = isset($_REQUEST['month']) ? $_REQUEST['month'] : $current_year_month;
+        // Convert to YYYY-MM-01 format for database queries
+        $selected_month_db_format = $selected_year_month_display . '-01'; 
+        
+        // --- Calculate Prev/Next Navigation Months ---
+        $selected_dt = new \DateTime($selected_month_db_format);
+        
+        // Calculate Previous Month
+        $selected_dt_prev = clone $selected_dt;
+        $prev_month = $selected_dt_prev->modify('-1 month')->format('Y-m'); 
+        
+        // Calculate Next Month
+        $selected_dt_next = new \DateTime($selected_month_db_format);
+        $next_month = $selected_dt_next->modify('+1 month')->format('Y-m'); 
+        
+        // // Prevent navigating to future months
+        // if ($next_month > $current_year_month) {
+        //     $next_month = $current_year_month;
+        // }
+        // // --- End Navigation Calculation ---
+
 
         // 2. Handle POST Request (Salary Update) using transactions
         if (isset($_POST['save_salaries']) && isset($_POST['salaries'])) {
             $data_to_save = $_POST['salaries'];
-            $success_count = 0;
             
-            // Start transaction
-            // Note: We use the $this->model->beginTransaction() alias defined in the Model,
-            // which handles the check for the method's existence.
             $this->model->beginTransaction();
 
             try {
                 foreach ($data_to_save as $employee_id => $salary_value) {
                     $employee_id = (int)$employee_id;
-                    // Sanitize and ensure salary is a float, defaulting to 0.00 if invalid/empty
-                    $salary = (float)(filter_var($salary_value, FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION) ?? 0.00);
                     
-                    if ($salary < 0) continue; // Skip negative salaries or invalid records
+                    // CRITICAL LOGIC: Treat empty entry as 0.00
+                    $salary_input = trim($salary_value); 
+                    $salary = 0.00;
+                    if ($salary_input !== '') {
+                        // Sanitize input
+                        $salary = (float)(filter_var($salary_input, FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION) ?? 0.00);
+                    }
+                    
+                    if ($salary < 0) continue; 
 
                     $data = [
                         'employee_id' => $employee_id,
@@ -982,43 +1004,39 @@ class Controller
                         'salary_month' => $selected_month_db_format
                     ];
                     
-                    // Check if a record already exists using month and employee ID
-                    // The Model's selectOne is optimized for single-record fetches.
+                    // Check if a record already exists
                     $existing = $this->model->selectOne(
                         'monthwise_salary',
                         ['employee_id' => $employee_id, 'salary_month' => $selected_month_db_format]
                     );
 
                     if ($existing) {
-                        // Update existing record
+                        // Scenario 1: Record exists. Update it.
                         $update_data = ['salary' => $salary];
-                        $result = $this->model->updateData(
-                            'monthwise_salary',
-                            $update_data,
-                            ['id' => $existing->id]
-                        );
-                    } else if ($salary > 0) {
-                        // Insert new record (only if salary is set and greater than 0)
-                        $result = $this->model->insertData('monthwise_salary', $data);
+                        // Update only if the salary value has changed
+                        if (number_format($existing->salary, 2, '.', '') != number_format($salary, 2, '.', '')) { 
+                            $result = $this->model->updateData(
+                                'monthwise_salary',
+                                $update_data,
+                                ['id' => $existing->id]
+                            );
+                        } else {
+                            $result = true; // No actual change needed
+                        }
                     } else {
-                        // If salary is 0 and no record exists, do nothing (no need to insert a 0 record)
-                        $result = true; // Set to true to avoid treating this as a transaction failure
+                        // Scenario 2: Record does not exist. Insert it (critical for saving 0.00 explicitly).
+                        $result = $this->model->insertData('monthwise_salary', $data);
                     }
                     
-                    if ($result !== false) {
-                        $success_count++;
-                    } else {
-                        // If any query fails, roll back the entire transaction
-                         throw new \Exception("Database error during insert/update for Employee ID: $employee_id.");
+                    if ($result === false) {
+                        throw new \Exception("Database error during insert/update for Employee ID: $employee_id.");
                     }
                 }
                 
-                // Commit the transaction only if the loop completed without errors
                 $this->model->commit();
-                $status_message = "Successfully updated/inserted $success_count salary records for " . date('F Y', strtotime($selected_month_db_format));
+                $status_message = "Successfully updated/inserted salaries for " . date('F Y', strtotime($selected_month_db_format));
 
             } catch (\Exception $e) {
-                // Roll back any partial changes
                 $this->model->rollBack();
                 $error_message = "Error saving salaries: " . $e->getMessage() . ". All changes rolled back.";
             }
@@ -1028,15 +1046,8 @@ class Controller
             exit();
         }
 
-        // 3. Fetch all employees (to display the full list)
+        // 3. Fetch all employees
         $employees = $this->model->selectData('employees_list', ['order_by' => 'employee_name ASC']); 
-
-        // Map employee details by ID for easy lookup
-        $employee_map = [];
-        foreach ($employees as $emp) {
-            // FIX: Changed $emp->id to $emp->employee_id to resolve the 'Undefined property' warning.
-            $employee_map[$emp->employee_id] = $emp; 
-        }
 
         // 4. Fetch existing salary records for the selected month
         $existing_salaries = $this->model->selectDataWithCondition(
@@ -1049,45 +1060,61 @@ class Controller
         foreach ($existing_salaries as $record) {
             $salary_map[$record->employee_id] = $record->salary;
         }
-        
-        // 5. Determine the list of available months (Data-driven approach using selectDataCustom)
-        // Fetch all unique months that have salary data, ordered descending
-        $existing_months = $this->model->selectDataCustom("
-            SELECT DISTINCT DATE_FORMAT(salary_month, '%Y-%m') AS month_str
-            FROM monthwise_salary
-            ORDER BY salary_month DESC
-        ");
-        
-        $month_list_unique = [];
-        foreach ($existing_months as $m) {
-            $month_list_unique[] = $m->month_str;
-        }
 
-        // Ensure the current month is always available at the top for easy selection
-        $current_month_str = date('Y-m');
-        if (!in_array($current_month_str, $month_list_unique)) {
-            array_unshift($month_list_unique, $current_month_str);
-        }
+        // 5. AUTO-POPULATE LOGIC: If the selected month is empty, load data from the latest saved preceding month.
+        if (empty($salary_map)) {
+            
+            // **FIXED LOGIC**: Use the existing selectDataCustom to find the latest previous month.
+            $sql = "
+                SELECT DISTINCT salary_month 
+                FROM monthwise_salary
+                WHERE salary_month < '{$selected_month_db_format}'
+                ORDER BY salary_month DESC
+                LIMIT 1
+            ";
+            
+            // selectDataCustom returns an array, so we check the first element.
+            $latest_prev_month_records = $this->model->selectDataCustom($sql);
 
-        $month_list = $month_list_unique;
+            if (!empty($latest_prev_month_records)) {
+                $latest_prev_month_record = $latest_prev_month_records[0];
+                $previous_month_date = $latest_prev_month_record->salary_month;
+                $previous_month_display = date('F Y', strtotime($previous_month_date));
+
+                // Fetch this latest previous month's salary data using a standard method
+                $previous_salaries = $this->model->selectDataWithCondition(
+                    'monthwise_salary',
+                    ['salary_month' => $previous_month_date]
+                );
+
+                if (!empty($previous_salaries)) {
+                    // Populate salary_map with latest saved data
+                    $salary_map = [];
+                    foreach ($previous_salaries as $record) {
+                        $salary_map[$record->employee_id] = $record->salary;
+                    }
+                    // Set status message for user feedback
+                    $status_message = (empty($status_message) ? '' : $status_message . ' | ') . " Salaries auto-populated from $previous_month_display. Edit and click Save to confirm for the current month.";
+                }
+            }
+        }
         
-        // 6. Load the view (The view must handle the $employees, $salary_map, $month_list, 
-        // $selected_year_month_display, $status_message, and $error_message variables)
+        // Prepare data for the view
+        $data = [
+            'employees' => $employees,
+            'salary_map' => $salary_map,
+            'selected_year_month_display' => $selected_year_month_display,
+            'selected_month_db_format' => $selected_month_db_format, 
+            'status_message' => $status_message,
+            'error_message' => $error_message,
+            'prev_month' => $prev_month,
+            'next_month' => $next_month,
+            'current_year_month' => $current_year_month,
+        ];
+        
+        // Load the view
+        extract($data);
         include ('app/views/monthly_salary_crud.php'); 
-        
-        // For demonstration, let's output a summary instead of loading a view file:
-        // echo "<h1>Salary Management for: " . $selected_year_month_display . "</h1>";
-        // if ($status_message) echo "<p style='color: green;'>$status_message</p>";
-        // if ($error_message) echo "<p style='color: red;'>$error_message</p>";
-        // echo "<p>Total Employees: " . count($employees) . "</p>";
-        // echo "<p>Available Months: " . implode(', ', $month_list) . "</p>";
-        
-        // Example View Data Structure (Simulated):
-        /* foreach ($employees as $employee) {
-            $salary = $salary_map[$employee->id] ?? '0.00';
-            echo "<div>Employee: {$employee->employee_name} (ID: {$employee->id}) | Salary: {$salary}</div>";
-        }
-        */
     }
 
 }
